@@ -39,9 +39,9 @@ A secure backend API for an event registration platform. Built with Node.js, Exp
 Prerequisite: Start the Server
 
 **Open a terminal and run:**
-'''
+```
 npm run dev
-'''
+```
 
 (Leave this terminal running. Open a second terminal for the following curl commands).
 
