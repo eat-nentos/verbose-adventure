@@ -1,166 +1,226 @@
 # Multi-Resource API with Roles & Concurrency Safety
 
-A secure backend API for an event registration platform. Built with Node.js, Express, Prisma, and PostgreSQL (Neon).
+A secure backend API for an event registration platform, built with Node.js, Express, Prisma, and PostgreSQL (Neon).
 
-## 🚀 Features
+## Features
+
 - **Role-Based Access Control (RBAC):** Admins can create events; Members can view and register.
-- **Secure Authentication:** Short-lived Access Tokens (15m) + database-backed Refresh Tokens (7d).
-- **Relational Schema:** Users, Events, Registrations, and Refresh Tokens using Foreign Keys.
+- **Secure Authentication:** Short-lived access tokens (15 min) plus database-backed refresh tokens (7 days).
+- **Relational Schema:** Users, Events, Registrations, and Refresh Tokens linked with foreign keys.
 - **Pagination & Sorting:** `GET /api/events` supports `page`, `limit`, `sortBy`, and `order`.
-- **Concurrency Safety:** Utilizes PostgreSQL row-level locking (`FOR UPDATE`) inside a transaction to prevent race conditions during event registration.
-- **Automated Testing:** 3 integration tests covering Auth, RBAC, and Concurrency using Jest & Supertest.
+- **Concurrency Safety:** Uses PostgreSQL row-level locking (`FOR UPDATE`) inside a transaction to prevent race conditions during event registration.
+- **Automated Testing:** 3 integration tests covering Auth, RBAC, and Concurrency using Jest and Supertest.
 
-## 🛠️ Tech Stack
-- **Runtime:** Node.js
-- **Framework:** Express.js
-- **Database:** PostgreSQL (hosted on Neon)
-- **ORM:** Prisma
-- **Testing:** Jest, Supertest
+## Tech Stack
 
-## 🗄️ Database Schema
-![Database Scheme](db-framework.png)
+| Layer     | Technology             |
+|-----------|------------------------|
+| Runtime   | Node.js                |
+| Framework | Express.js             |
+| Database  | PostgreSQL (Neon)      |
+| ORM       | Prisma                 |
+| Testing   | Jest, Supertest        |
 
-- **User:** Stores credentials and role (ADMIN/MEMBER).
-- **Event:** Stores event details and capacity.
-- **Registration:** Join table linking Users and Events. Has a `@@unique([userId, eventId])` constraint.
-- **RefreshToken:** Stores valid refresh tokens for token rotation.
+## Database Schema
 
-## ⚙️ Setup & Installation
-1. Clone the repository.
-2. Install dependencies: `npm install`
-3. Create a `.env` file in the root directory and add:
+![Database Schema](db-framework.png)
+
+| Model          | Purpose                                                                                      |
+|----------------|----------------------------------------------------------------------------------------------|
+| `User`         | Stores credentials and role (`ADMIN` / `MEMBER`).                                            |
+| `Event`        | Stores event details and capacity.                                                           |
+| `Registration` | Join table linking Users and Events, with a `@@unique([userId, eventId])` constraint.        |
+| `RefreshToken` | Stores valid refresh tokens to support token rotation.                                       |
+
+## Setup & Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/eat-nentos/<repo-name>.git
+   cd <repo-name>/event-api
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Create a `.env` file in the project root:
+
    ```env
    PORT=3000
    DATABASE_URL="your_neon_postgres_url"
    JWT_ACCESS_SECRET="your_access_secret"
    JWT_REFRESH_SECRET="your_refresh_secret"
+   ```
 
-## Manual API Testing (Curl Commands)
-Prerequisite: Start the Server
+4. Set up the database schema:
 
-**Open a terminal and run:**
+   ```bash
+   npx prisma migrate dev
+   ```
+
+5. Start the server:
+
+   ```bash
+   npm run dev
+   ```
+
+## Running Automated Tests
+
+```bash
+npm test
 ```
-npm run dev
+
+## API Endpoints
+
+| Method | Endpoint                      | Access        | Description                         |
+|--------|-------------------------------|---------------|-------------------------------------|
+| POST   | `/api/auth/register`          | Public        | Register a new user                 |
+| POST   | `/api/auth/login`             | Public        | Log in and receive tokens           |
+| POST   | `/api/auth/refresh`           | Public        | Exchange a refresh token            |
+| GET    | `/api/protected`              | Authenticated | Test protected route                |
+| GET    | `/api/admin-only`             | Admin         | Test admin-only route               |
+| POST   | `/api/events`                 | Admin         | Create an event                     |
+| GET    | `/api/events`                 | Authenticated | List events (paginated, sortable)   |
+| POST   | `/api/events/:id/register`    | Authenticated | Register for an event               |
+
+## Manual API Testing (curl)
+
+**Prerequisite:** start the server in one terminal with `npm run dev`, and leave it running. Use a second terminal for the commands below.
+
+### Authentication & RBAC
+
+**1. Register an Admin**
+
+```bash
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@test.com","password":"password123","role":"ADMIN"}'
 ```
 
-(Leave this terminal running. Open a second terminal for the following curl commands).
+**2. Register a Member**
 
-**Authentication & RBAC Testing**
-
-1. Register an Admin:
-'''
+```bash
 curl -X POST http://localhost:3000/api/auth/register \
--H "Content-Type: application/json" \
--d '{"email":"admin@test.com","password":"password123","role":"ADMIN"}'
-'''
-2. Register a Member:
+  -H "Content-Type: application/json" \
+  -d '{"email":"member@test.com","password":"password123","role":"MEMBER"}'
+```
 
-'''
-curl -X POST http://localhost:3000/api/auth/register \
--H "Content-Type: application/json" \
--d '{"email":"member@test.com","password":"password123","role":"MEMBER"}'
-'''
-3. Login as Admin (Get Access Token):
+**3. Log in as Admin**
 
-'''
+```bash
 curl -X POST http://localhost:3000/api/auth/login \
--H "Content-Type: application/json" \
--d '{"email":"admin@test.com","password":"password123"}'
-'''
-Action: Copy the accessToken from the response. Call it YOUR_ADMIN_TOKEN.
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@test.com","password":"password123"}'
+```
 
-4. Login as Member (Get Access Token):
+Copy the `accessToken` from the response and use it as `YOUR_ADMIN_TOKEN`.
 
-'''
+**4. Log in as Member**
+
+```bash
 curl -X POST http://localhost:3000/api/auth/login \
--H "Content-Type: application/json" \
--d '{"email":"member@test.com","password":"password123"}'
-'''
-Action: Copy the accessToken from the response. Call it YOUR_MEMBER_TOKEN.
+  -H "Content-Type: application/json" \
+  -d '{"email":"member@test.com","password":"password123"}'
+```
 
-5. Test Protected Route (With Admin Token):
+Copy the `accessToken` from the response and use it as `YOUR_MEMBER_TOKEN`.
 
-'''
+**5. Access a protected route (Admin token)**
+
+```bash
 curl http://localhost:3000/api/protected \
--H "Authorization: Bearer YOUR_ADMIN_TOKEN"
-'''
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
 
-6. Test Admin-Only Route (With Admin Token - Should Succeed):
+**6. Access an admin-only route (Admin token) — should succeed**
 
-'''
+```bash
 curl http://localhost:3000/api/admin-only \
--H "Authorization: Bearer YOUR_ADMIN_TOKEN"
-'''
-7. Test Admin-Only Route (With Member Token - Should Fail with 403):
-bash
-'''
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+
+**7. Access an admin-only route (Member token) — should fail with `403`**
+
+```bash
 curl http://localhost:3000/api/admin-only \
--H "Authorization: Bearer YOUR_MEMBER_TOKEN"
-'''
+  -H "Authorization: Bearer YOUR_MEMBER_TOKEN"
+```
 
-**Event & Concurrency Testing**
+### Events
 
-8. Create an Event (As Admin):
+**8. Create an event (Admin)**
 
-'''
+```bash
 curl -X POST http://localhost:3000/api/events \
--H "Content-Type: application/json" \
--H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
--d '{"title":"Tech Conference","description":"A great event","capacity":50}'
-'''
-Action: Copy the id of the event from the response. Call it EVENT_ID.
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -d '{"title":"Tech Conference","description":"A great event","capacity":50}'
+```
 
-9. Try to Create an Event as a Member (Should Fail with 403):
+Copy the `id` from the response and use it as `EVENT_ID`.
 
-'''
+**9. Create an event as a Member — should fail with `403`**
+
+```bash
 curl -X POST http://localhost:3000/api/events \
--H "Content-Type: application/json" \
--H "Authorization: Bearer YOUR_MEMBER_TOKEN" \
--d '{"title":"Hacker Event","capacity":100}'
-'''
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_MEMBER_TOKEN" \
+  -d '{"title":"Hacker Event","capacity":100}'
+```
 
-10. List Events (With Pagination & Sorting):
+**10. List events with pagination and sorting**
 
-'''
+```bash
 curl "http://localhost:3000/api/events?page=1&limit=5&sortBy=title&order=asc" \
--H "Authorization: Bearer YOUR_ADMIN_TOKEN"
-'''
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
 
-11. Register for an Event (As Member):
+**11. Register for an event (Member)**
 
-'''
+```bash
 curl -X POST http://localhost:3000/api/events/EVENT_ID/register \
--H "Authorization: Bearer YOUR_MEMBER_TOKEN"
-'''
-12. Test Refresh Token Flow:
-(Copy the refreshToken from Step 3 or Step 4)
+  -H "Authorization: Bearer YOUR_MEMBER_TOKEN"
+```
 
-'''
+**12. Refresh the access token**
+
+Copy the `refreshToken` from step 3 or 4:
+
+```bash
 curl -X POST http://localhost:3000/api/auth/refresh \
--H "Content-Type: application/json" \
--d '{"refreshToken":"YOUR_REFRESH_TOKEN"}'
-'''
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken":"YOUR_REFRESH_TOKEN"}'
+```
 
-**🔥 The Ultimate Concurrency Test**
+### Concurrency Test
 
-13. Create an Event with Capacity 1 (As Admin):
-bash
-'''
+This test shows that row-level locking prevents overbooking when many requests arrive at the same time.
+
+**13. Create an event with capacity 1 (Admin)**
+
+```bash
 curl -X POST http://localhost:3000/api/events \
--H "Content-Type: application/json" \
--H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
--d '{"title":"Last Spot","capacity":1}'
-'''
-Action: Copy the new EVENT_ID.
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -d '{"title":"Last Spot","capacity":1}'
+```
 
-14. Fire 5 Simultaneous Registration Requests (As Member):
-(Replace EVENT_ID and YOUR_MEMBER_TOKEN below. Paste the entire block into your terminal at once).
-bash
-'''
+Copy the new `id` and use it as `EVENT_ID`.
+
+**14. Fire 5 simultaneous registration requests (Member)**
+
+Replace `EVENT_ID` and `YOUR_MEMBER_TOKEN`, then paste the whole block into your terminal at once:
+
+```bash
 for i in {1..5}; do
   curl -s -X POST http://localhost:3000/api/events/EVENT_ID/register \
-  -H "Authorization: Bearer YOUR_MEMBER_TOKEN" &
+    -H "Authorization: Bearer YOUR_MEMBER_TOKEN" &
 done
 wait
-'''
-Expected Result: Exactly 1 success (201 Created) and 4 failures (400 Bad Request with "Event is at full capacity").
+```
+
+**Expected result:** exactly 1 success (`201 Created`) and 4 failures (`400 Bad Request`).
