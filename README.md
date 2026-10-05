@@ -23,7 +23,7 @@ A secure backend API for an event registration platform, built with Node.js, Exp
 
 ## Database Schema
 
-![Database Schema](db-framework.png)
+![Database Schema](event-api/db-framework.png)
 
 | Model          | Purpose                                                                                      |
 |----------------|----------------------------------------------------------------------------------------------|
